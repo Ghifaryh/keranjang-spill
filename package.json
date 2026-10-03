@@ -1,0 +1,25 @@
+{
+  "name": "keranjang-spill",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node ./dist/server/entry.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.6",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.3.5",
+    "better-sqlite3": "^13.0.3",
+    "googleapis": "^183.0.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

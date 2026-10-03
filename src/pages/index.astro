@@ -1,0 +1,380 @@
+---
+import '../styles/global.css';
+import { getAllActiveProducts, upsertProductsBatch, type Product } from '../lib/db';
+
+export const prerender = false;
+
+// Check if any products exist, if not seed initial demo products for an instant great experience
+let products = getAllActiveProducts();
+if (products.length === 0) {
+  const seedProducts = [
+    {
+      number: '45',
+      title: 'Kemeja Oversize Linen Korean Style Casual',
+      affiliate_url: 'https://s.shopee.co.id/demo45',
+      image_url: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=160&auto=format&fit=crop&q=80',
+      platform: 'shopee',
+      active: 1,
+    },
+    {
+      number: '88',
+      title: 'Cardigan Rajut Crop Pastel Soft Knit',
+      affiliate_url: 'https://s.shopee.co.id/demo88',
+      image_url: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=160&auto=format&fit=crop&q=80',
+      platform: 'shopee',
+      active: 1,
+    },
+    {
+      number: '12',
+      title: 'Lip Velvet Matte Tint Longlasting Waterproof',
+      affiliate_url: 'https://vt.tiktok.com/ZSjDemo12',
+      image_url: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=160&auto=format&fit=crop&q=80',
+      platform: 'tiktok',
+      active: 1,
+    },
+    {
+      number: '03',
+      title: 'Kipas Angin Mini Portable USB Aesthetic Pink',
+      affiliate_url: 'https://s.shopee.co.id/demo03',
+      image_url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=160&auto=format&fit=crop&q=80',
+      platform: 'shopee',
+      active: 1,
+    },
+    {
+      number: '27',
+      title: 'Vintage Leather Sling Bag Mini Korean Look',
+      affiliate_url: 'https://tokopedia.link/demo27',
+      image_url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=160&auto=format&fit=crop&q=80',
+      platform: 'tokopedia',
+      active: 1,
+    },
+  ];
+  upsertProductsBatch(seedProducts);
+  products = getAllActiveProducts();
+}
+
+const creatorName = process.env.CREATOR_NAME || 'Spill by Inten 🌸';
+const creatorBio = process.env.CREATOR_BIO || 'Rekomendasi outfit, skincare & printilan lucu! Cari nomor spill dari video TikTok/IG kamu di bawah ya ✨';
+const creatorAvatar = process.env.CREATOR_AVATAR || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
+const tiktokUrl = process.env.CREATOR_TIKTOK || 'https://tiktok.com';
+const igUrl = process.env.CREATOR_INSTAGRAM || 'https://instagram.com';
+
+const notFoundQuery = Astro.url.searchParams.get('not_found');
+---
+
+<!doctype html>
+<html lang="id" class="h-full bg-pink-50/50">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Katalog nomor spill produk rekomendasi TikTok & Instagram" />
+    <meta name="theme-color" content="#f43f5e" />
+    <title>{creatorName} | Keranjang Spill</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>" />
+  </head>
+  <body class="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50/40 to-white text-zinc-800 antialiased selection:bg-pink-200">
+    <!-- Main Mobile Container -->
+    <main class="max-w-md mx-auto px-4 py-4 min-h-screen flex flex-col pb-12">
+      
+      {notFoundQuery && (
+        <div id="not-found-toast" class="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between text-xs text-rose-700 shadow-sm transition-all duration-300">
+          <div class="flex items-center gap-2">
+            <span class="text-base">⚠️</span>
+            <span>Nomor spill yang kamu tuju tidak ditemukan atau sudah tidak aktif.</span>
+          </div>
+          <button id="close-toast" class="text-rose-400 hover:text-rose-700 p-1" aria-label="Tutup pesan">✕</button>
+        </div>
+      )}
+
+      <!-- Creator Header Card -->
+      <section class="text-center pt-2 pb-4">
+        <div class="relative inline-block mb-3">
+          <img
+            src={creatorAvatar}
+            alt={creatorName}
+            class="w-20 h-20 rounded-full object-cover ring-4 ring-pink-300/80 shadow-md shadow-pink-100 mx-auto"
+            loading="eager"
+          />
+          <div class="absolute bottom-0 right-1 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center text-white text-xs border-2 border-white shadow-sm" title="Verified Creator">
+            ✓
+          </div>
+        </div>
+
+        <h1 class="text-xl font-extrabold text-zinc-900 tracking-tight flex items-center justify-center gap-1.5">
+          {creatorName}
+        </h1>
+        <p class="text-xs text-zinc-600 mt-1.5 max-w-xs mx-auto leading-relaxed">
+          {creatorBio}
+        </p>
+
+        <!-- Social Badges -->
+        <div class="flex justify-center items-center gap-2 mt-3">
+          {tiktokUrl && (
+            <a
+              href={tiktokUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-pink-200 text-zinc-700 shadow-xs hover:border-pink-400 transition-colors"
+            >
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.46 6.27 6.27 0 0 0 1.87-4.47V8.62a8.27 8.27 0 0 0 4.9 1.58V6.75a4.84 4.84 0 0 1-1-.06Z"/>
+              </svg>
+              TikTok
+            </a>
+          )}
+          {igUrl && (
+            <a
+              href={igUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-pink-200 text-zinc-700 shadow-xs hover:border-pink-400 transition-colors"
+            >
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
+              Instagram
+            </a>
+          )}
+        </div>
+      </section>
+
+      <!-- Sticky Search Bar -->
+      <section class="sticky top-2 z-30 mb-3">
+        <div class="backdrop-blur-md bg-white/90 border border-pink-200/90 shadow-md shadow-pink-100/50 rounded-2xl p-2 transition-all">
+          <div class="relative flex items-center">
+            <!-- Search Icon / Mode Pill -->
+            <button
+              id="mode-toggle-btn"
+              type="button"
+              class="px-2.5 py-1.5 mr-2 rounded-xl bg-pink-100 hover:bg-pink-200 text-pink-700 text-xs font-bold transition-all flex items-center gap-1 select-none flex-shrink-0"
+              title="Klik untuk beralih mode Angka / Teks"
+              aria-label="Ubah mode pencarian"
+            >
+              <span id="mode-label">123</span>
+              <span class="text-[9px] opacity-75">▼</span>
+            </button>
+
+            <!-- Search Input -->
+            <input
+              id="search-input"
+              type="text"
+              inputmode="numeric"
+              placeholder="Ketik nomor spill (contoh: 45)..."
+              autocomplete="off"
+              autofocus
+              class="w-full bg-transparent text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+            />
+
+            <!-- Clear Button -->
+            <button
+              id="clear-search-btn"
+              type="button"
+              class="hidden text-zinc-400 hover:text-zinc-600 px-2 py-1 text-base font-bold transition-colors select-none"
+              aria-label="Bersihkan pencarian"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Result count bar -->
+        <div class="flex items-center justify-between px-2 pt-1.5 text-[11px] text-zinc-500 font-medium">
+          <span id="result-count-label">Menampilkan {products.length} produk</span>
+          <span class="text-pink-600 font-semibold">Cari &amp; Buka Langsung</span>
+        </div>
+      </section>
+
+      <!-- Product List -->
+      <section id="product-container" class="space-y-2.5 flex-1">
+        {products.map((item) => {
+          const platformLabel = item.platform === 'shopee'
+            ? 'Shopee'
+            : item.platform === 'tiktok'
+              ? 'TikTok Shop'
+              : item.platform === 'tokopedia'
+                ? 'Tokopedia'
+                : 'Toko';
+
+          const platformBg = item.platform === 'shopee'
+            ? 'bg-orange-50 text-orange-600 border-orange-200'
+            : item.platform === 'tiktok'
+              ? 'bg-zinc-100 text-zinc-800 border-zinc-200'
+              : item.platform === 'tokopedia'
+                ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                : 'bg-pink-50 text-pink-600 border-pink-200';
+
+          return (
+            <article
+              class="product-card bg-white/95 border border-pink-100 rounded-2xl p-3 shadow-xs hover:shadow-md hover:border-pink-300 transition-all flex gap-3 items-center group"
+              data-number={item.number.toLowerCase()}
+              data-title={item.title.toLowerCase()}
+            >
+              <!-- Big Number Badge -->
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 text-white font-black text-lg flex items-center justify-center shadow-sm shadow-pink-200 flex-shrink-0 group-hover:scale-105 transition-transform">
+                #{item.number}
+              </div>
+
+              <!-- Product Thumbnail -->
+              <div class="w-14 h-14 rounded-xl bg-pink-50 border border-pink-100 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                  />
+                  <div class="hidden w-full h-full items-center justify-center text-pink-400 text-xl font-bold bg-pink-50">
+                    🛍️
+                  </div>
+                ) : (
+                  <span class="text-xl">🛍️</span>
+                )}
+              </div>
+
+              <!-- Info Column -->
+              <div class="flex-1 min-w-0 pr-1">
+                <span class={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1 ${platformBg}`}>
+                  {platformLabel}
+                </span>
+                <h2 class="text-xs font-semibold text-zinc-900 leading-snug line-clamp-2">
+                  {item.title}
+                </h2>
+              </div>
+
+              <!-- CTA Button -->
+              <a
+                href={`/go/${item.number}`}
+                class="px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-sm shadow-pink-200 flex items-center gap-1 ml-auto flex-shrink-0 active:scale-95 transition-all text-center"
+              >
+                <span>Beli</span>
+                <span class="text-[10px]">➜</span>
+              </a>
+            </article>
+          );
+        })}
+      </section>
+
+      <!-- Empty State Card -->
+      <section id="empty-state" class="hidden text-center py-10 px-4 my-auto">
+        <div class="w-16 h-16 rounded-2xl bg-pink-100 text-pink-500 text-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+          🔍
+        </div>
+        <h3 class="text-sm font-bold text-zinc-900 mb-1">
+          Nomor Tidak Ditemukan
+        </h3>
+        <p id="empty-query-text" class="text-xs text-zinc-500 max-w-xs mx-auto leading-relaxed">
+          Belum ada produk untuk nomor ini. Coba cek nomor lain ya sis! ✨
+        </p>
+        <button
+          id="reset-search-btn"
+          type="button"
+          class="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold bg-pink-500 text-white hover:bg-pink-600 transition-colors shadow-sm shadow-pink-200"
+        >
+          Lihat Semua Produk
+        </button>
+      </section>
+
+      <!-- Footer Info -->
+      <footer class="mt-8 pt-4 border-t border-pink-100 text-center text-[11px] text-zinc-400">
+        <p>KeranjangSpill • Affiliate Link-in-Bio Cepat &amp; Praktis</p>
+      </footer>
+    </main>
+
+    <!-- Client-Side Instant Filtering Script (Zero-Latency Vanilla JS) -->
+    <script is:inline>
+      (() => {
+        const input = document.getElementById('search-input');
+        const clearBtn = document.getElementById('clear-search-btn');
+        const modeBtn = document.getElementById('mode-toggle-btn');
+        const modeLabel = document.getElementById('mode-label');
+        const cards = document.querySelectorAll('.product-card');
+        const emptyState = document.getElementById('empty-state');
+        const emptyQueryText = document.getElementById('empty-query-text');
+        const resetBtn = document.getElementById('reset-search-btn');
+        const countLabel = document.getElementById('result-count-label');
+        const toast = document.getElementById('not-found-toast');
+        const closeToastBtn = document.getElementById('close-toast');
+
+        if (closeToastBtn && toast) {
+          closeToastBtn.addEventListener('click', () => {
+            toast.remove();
+          });
+        }
+
+        let isNumericMode = true;
+
+        // Toggle keyboard mode between Numeric (123) and Text (ABC)
+        if (modeBtn && modeLabel && input) {
+          modeBtn.addEventListener('click', () => {
+            isNumericMode = !isNumericMode;
+            if (isNumericMode) {
+              input.setAttribute('inputmode', 'numeric');
+              modeLabel.textContent = '123';
+              input.placeholder = 'Ketik nomor spill (contoh: 45)...';
+            } else {
+              input.setAttribute('inputmode', 'text');
+              modeLabel.textContent = 'ABC';
+              input.placeholder = 'Cari nama produk (contoh: kemeja)...';
+            }
+            input.focus();
+          });
+        }
+
+        function filterProducts() {
+          const query = (input.value || '').trim().toLowerCase();
+
+          if (query.length > 0) {
+            clearBtn.classList.remove('hidden');
+          } else {
+            clearBtn.classList.add('hidden');
+          }
+
+          let visibleCount = 0;
+
+          // Pure DOM class toggling (<2ms execution time)
+          for (let i = 0; i < cards.length; i++) {
+            const card = cards[i];
+            const num = card.getAttribute('data-number') || '';
+            const title = card.getAttribute('data-title') || '';
+
+            // Match number prefix/contains or title substring
+            const match = num.startsWith(query) || num.includes(query) || title.includes(query);
+
+            if (match) {
+              card.classList.remove('hidden');
+              visibleCount++;
+            } else {
+              card.classList.add('hidden');
+            }
+          }
+
+          if (visibleCount === 0) {
+            emptyState.classList.remove('hidden');
+            emptyQueryText.textContent = `Nomor #${query} belum ada di spill. Coba cek nomor lain ya sis! ✨`;
+            countLabel.textContent = '0 produk ditemukan';
+          } else {
+            emptyState.classList.add('hidden');
+            countLabel.textContent = `Menampilkan ${visibleCount} produk`;
+          }
+        }
+
+        input.addEventListener('input', filterProducts);
+
+        clearBtn.addEventListener('click', () => {
+          input.value = '';
+          filterProducts();
+          input.focus();
+        });
+
+        if (resetBtn) {
+          resetBtn.addEventListener('click', () => {
+            input.value = '';
+            filterProducts();
+            input.focus();
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

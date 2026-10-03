@@ -1,0 +1,28 @@
+services:
+  keranjangspill:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: keranjangspill
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=4321
+      - DATABASE_PATH=/app/data/keranjang.db
+      - APP_URL=${APP_URL:-http://localhost:4321}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_USER_ID=${TELEGRAM_ALLOWED_USER_ID:-}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID:-}
+      - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+      - SYNC_SECRET=${SYNC_SECRET:-}
+      - CREATOR_NAME=${CREATOR_NAME:-Spill by Intan 🌸}
+      - CREATOR_BIO=${CREATOR_BIO:-Rekomendasi outfit, skincare & printilan lucu! Cari nomor spill di bawah ya ✨}
+      - CREATOR_AVATAR=${CREATOR_AVATAR:-}
+      - CREATOR_TIKTOK=${CREATOR_TIKTOK:-https://tiktok.com}
+      - CREATOR_INSTAGRAM=${CREATOR_INSTAGRAM:-https://instagram.com}
