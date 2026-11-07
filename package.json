@@ -6,7 +6,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "start": "node ./dist/server/entry.mjs"
+    "start": "node ./dist/server/entry.mjs",
+    "verify": "tsx scripts/verify-all.ts",
+    "bot:dev": "tsx --env-file=.env scripts/bot-dev.ts"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.11",

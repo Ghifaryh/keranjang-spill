@@ -1,4 +1,11 @@
-import { upsertProduct, getAllActiveProducts, setProductActive, detectPlatform } from './db';
+import {
+  upsertProduct,
+  getAllActiveProducts,
+  getProductByNumber,
+  getNextProductNumber,
+  setProductActive,
+  detectPlatform,
+} from './db';
 import { appendProductToSheet, updateProductActiveInSheet, syncFromSheets } from './sheets';
 
 export interface TelegramUser {
@@ -41,6 +48,8 @@ export interface ParsedProductMessage {
   number: string;
   title: string;
   url: string;
+  autoNumber?: boolean;
+  isExplicitEdit?: boolean;
 }
 
 export interface TelegramProcessResult {
@@ -49,36 +58,115 @@ export interface TelegramProcessResult {
   response?: string;
 }
 
+export function getAllowedUserIds(): string[] {
+  const raw = [process.env.TELEGRAM_ALLOWED_USER_ID, process.env.TELEGRAM_ALLOWED_USER_IDS]
+    .filter(Boolean)
+    .join(',');
+  return raw
+    .split(/[,;\s]+/)
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+}
+
 export function parseProductMessage(rawText: string): ParsedProductMessage | null {
-  const text = rawText.trim();
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+
+  const isExplicitEdit = /^\/(?:edit|update|ubah)\s+/i.test(trimmed);
+  const text = trimmed.replace(/^\/(?:edit|update|ubah|add|tambah)\s+/i, '').trim();
   if (!text) return null;
 
-  // Pattern 1: Delimited by - or | or – (e.g., "45 - Kemeja Linen - https://s.shopee.co.id/abc")
-  const delimiterPattern = /^(?:#)?([a-zA-Z0-9_\-]+)\s*(?:[-|–—]|\n)\s*(.+?)\s*(?:[-|–—]|\n)\s*(https?:\/\/[^\s]+)$/i;
-  const match = text.match(delimiterPattern);
-  if (match && match[1] && match[2] && match[3]) {
+  // Pattern 1: 3-part with explicit number (`45 - Kemeja Linen - https://s.shopee.co.id/abc`)
+  const threePartPattern =
+    /^(?:#)?([a-zA-Z0-9_\-]+)\s*(?:[-|–—]|\n)\s*(.+?)\s*(?:[-|–—]|\n)\s*(https?:\/\/[^\s]+)$/i;
+  const match3 = text.match(threePartPattern);
+  if (match3 && match3[1] && match3[2] && match3[3]) {
     return {
-      number: match[1].trim(),
-      title: match[2].trim(),
-      url: match[3].trim(),
+      number: match3[1].trim(),
+      title: match3[2].trim(),
+      url: match3[3].trim(),
+      autoNumber: false,
+      isExplicitEdit,
     };
   }
 
-  // Pattern 2: Multiline format
-  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-  if (lines.length >= 3) {
+  // Pattern 2: 2-part WITHOUT number (`Tas Selempang Kulit Vintage - https://s.shopee.co.id/demo99`)
+  const twoPartPattern = /^(.+?)\s*(?:[-|–—]|\n)\s*(https?:\/\/[^\s]+)$/i;
+  const match2 = text.match(twoPartPattern);
+  if (match2 && match2[1] && match2[2]) {
+    const candidateTitle = match2[1].trim();
+    if (candidateTitle && !/^https?:\/\//i.test(candidateTitle)) {
+      return {
+        number: '',
+        title: candidateTitle,
+        url: match2[2].trim(),
+        autoNumber: true,
+        isExplicitEdit,
+      };
+    }
+  }
+
+  // Pattern 3: Multiline format (3+ lines or 2 lines)
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  if (lines.length >= 2) {
     const urlLineIdx = lines.findIndex((l) => /^https?:\/\//i.test(l));
     if (urlLineIdx >= 2) {
       const number = lines[0].replace(/^#/, '').trim();
       const title = lines.slice(1, urlLineIdx).join(' ').trim();
       const url = lines[urlLineIdx].trim();
       if (number && title && url) {
-        return { number, title, url };
+        return { number, title, url, autoNumber: false, isExplicitEdit };
+      }
+    } else if (urlLineIdx === 1) {
+      const title = lines[0].trim();
+      const url = lines[1].trim();
+      if (title && url) {
+        return { number: '', title, url, autoNumber: true, isExplicitEdit };
       }
     }
   }
 
   return null;
+}
+
+export function diagnoseParseError(rawText: string): string {
+  const text = rawText.trim();
+  const hasUrl = /https?:\/\/[^\s]+/i.test(text);
+  const isOnlyUrl = /^https?:\/\/[^\s]+$/i.test(text);
+
+  if (isOnlyUrl) {
+    return [
+      '⚠️ <b>Gagal: Nama produk belum diisi!</b>',
+      'Anda baru mengirim link saja tanpa nama produk.',
+      '',
+      '💡 <b>Contoh yang benar:</b>',
+      `<code>Tas Selempang Kulit - ${text}</code>`,
+    ].join('\n');
+  }
+
+  if (!hasUrl) {
+    return [
+      '⚠️ <b>Gagal: Link produk tidak ditemukan!</b>',
+      'Pastikan pesan menyertakan link toko yang lengkap (diawali <code>https://</code>).',
+      '',
+      '💡 <b>Contoh yang benar:</b>',
+      '<code>Tas Selempang Kulit - https://s.shopee.co.id/abc123</code>',
+    ].join('\n');
+  }
+
+  return [
+    '⚠️ <b>Gagal: Format pemisah belum sesuai!</b>',
+    'Gunakan tanda strip (<code> - </code>) atau baris baru untuk memisahkan Nama Produk dan Link.',
+    '',
+    '💡 <b>Contoh (Nomor Otomatis):</b>',
+    '<code>Nama Produk - https://s.shopee.co.id/abc123</code>',
+    '',
+    '💡 <b>Contoh (Pilih Nomor Sendiri):</b>',
+    '<code>45 - Nama Produk - https://s.shopee.co.id/abc123</code>',
+  ].join('\n');
 }
 
 export async function sendTelegramMessage(
@@ -145,41 +233,57 @@ export async function processTelegramUpdate(update: TelegramUpdate): Promise<Tel
 
   const userId = msg.from?.id;
   const chatId = msg.chat.id;
-  const allowedUserId = process.env.TELEGRAM_ALLOWED_USER_ID?.trim();
+  const allowedIds = getAllowedUserIds();
 
-  // Authorization check: If allowedUserId is not configured or user does not match, reject
-  if (!allowedUserId) {
+  // Authorization check: Supports 1 or multiple comma-separated Telegram User IDs (e.g. husband + wife)
+  if (allowedIds.length === 0) {
     console.warn(`TELEGRAM_ALLOWED_USER_ID is not configured. Rejecting update from user ${userId}.`);
-    await sendTelegramMessage(chatId, '⚠️ Bot admin belum dikonfigurasi. Silakan setel TELEGRAM_ALLOWED_USER_ID.');
+    await sendTelegramMessage(
+      chatId,
+      `⚠️ Bot admin belum dikonfigurasi.\nID Telegram Anda adalah: <code>${userId}</code>\nTambahkan ke <code>TELEGRAM_ALLOWED_USER_ID</code> di file .env.`
+    );
     return { handled: true, authorized: false };
   }
 
-  if (!userId || String(userId) !== allowedUserId) {
+  if (!userId || !allowedIds.includes(String(userId))) {
     console.warn(`Unauthorized Telegram access attempt from user ID ${userId} (chat: ${chatId})`);
-    await sendTelegramMessage(chatId, '⛔ Akses ditolak. Anda tidak memiliki izin untuk mengelola keranjang spill ini.');
+    await sendTelegramMessage(
+      chatId,
+      `⛔ <b>Akses ditolak.</b>\nID Telegram Anda (<code>${userId}</code>) belum terdaftar sebagai admin.\n\n💡 <i>Tips: Tambahkan <code>,${userId}</code> pada <code>TELEGRAM_ALLOWED_USER_ID</code> di pengaturan .env untuk memberi akses.</i>`
+    );
     return { handled: true, authorized: false };
   }
+
   const rawText = (msg.text || msg.caption || '').trim();
 
   // Command: /start or /help
   if (rawText === '/start' || rawText === '/help') {
+    const nextNum = getNextProductNumber();
     const helpText = `
 <b>🌸 KeranjangSpill Bot Admin</b>
 
-Halo! Bot ini digunakan untuk menambah dan mengelola produk spill di link-in-bio Anda.
+Halo! Berikut cara menambah produk ke katalog Anda:
 
-<b>Cara Tambah Produk:</b>
-Ketik pesan dengan format:
+<b>1️⃣ Cara Cepat (Nomor Otomatis — #${nextNum}):</b>
+Cukup kirim nama barang dan link tanpa nomor:
+<code>Nama Produk - Link</code>
+Contoh:
+<code>Tas Selempang Kulit - https://s.shopee.co.id/abc123</code>
+
+<b>2️⃣ Pilih Nomor Sendiri:</b>
 <code>Nomor - Nama Produk - Link</code>
-
-<b>Contoh:</b>
+Contoh:
 <code>45 - Kemeja Oversize Linen - https://s.shopee.co.id/abc123</code>
 
-<i>Tips: Anda juga bisa mengirim Foto produk dengan caption format di atas!</i>
+<b>3️⃣ Ubah Produk yang Sudah Ada:</b>
+<code>/edit Nomor - Nama Baru - Link</code>
+
+<i>Tips: Bisa juga kirim Foto produk dengan caption di atas!</i>
 
 <b>Daftar Perintah:</b>
-• <code>/list</code> : Melihat 10 produk spill terbaru
-• <code>/delete &lt;nomor&gt;</code> : Menonaktifkan produk (contoh: <code>/delete 45</code>)
+• <code>/list</code> : Lihat 10 produk terbaru &amp; nomor berikutnya
+• <code>/edit &lt;no&gt; - &lt;nama&gt; - &lt;link&gt;</code> : Update produk
+• <code>/delete &lt;nomor&gt;</code> : Hapus produk (mis. <code>/delete 45</code>)
 • <code>/sync</code> : Refresh cache dari Google Sheets
 • <code>/help</code> : Tampilkan panduan ini
     `.trim();
@@ -191,6 +295,7 @@ Ketik pesan dengan format:
   // Command: /list
   if (rawText.startsWith('/list')) {
     const products = getAllActiveProducts().slice(0, 10);
+    const nextNum = getNextProductNumber();
     if (products.length === 0) {
       await sendTelegramMessage(chatId, '📦 Belum ada produk aktif di keranjang spill.');
       return { handled: true, authorized: true, response: 'list_empty' };
@@ -200,7 +305,7 @@ Ketik pesan dengan format:
       .map((p) => `• <b>#${p.number}</b>: ${p.title} (${p.platform || 'link'})\n  🔗 ${p.affiliate_url}`)
       .join('\n\n');
 
-    const reply = `<b>📋 10 Produk Spill Terbaru:</b>\n\n${itemsText}`;
+    const reply = `<b>📋 10 Produk Spill Terbaru:</b>\n\n${itemsText}\n\n💡 <i>Nomor otomatis berikutnya: <b>#${nextNum}</b></i>`;
     await sendTelegramMessage(chatId, reply);
     return { handled: true, authorized: true, response: 'list_sent' };
   }
@@ -240,11 +345,34 @@ Ketik pesan dengan format:
     return { handled: true, authorized: true, response: 'sync_completed' };
   }
 
-  // Parse product creation: <Number> - <Title> - <Link>
+  // Parse product creation or edit
   const parsed = parseProductMessage(rawText);
   if (parsed) {
+    const isAutoAssigned = Boolean(parsed.autoNumber || !parsed.number);
+    const finalNumber = isAutoAssigned ? getNextProductNumber() : parsed.number;
+    const existingProduct = !isAutoAssigned ? getProductByNumber(finalNumber) : null;
+
+    // Prevent accidental collision unless user explicitly sent /edit
+    if (existingProduct && !parsed.isExplicitEdit) {
+      const nextAvailable = getNextProductNumber();
+      const collisionMsg = [
+        `⚠️ <b>Gagal: Nomor #${finalNumber} sudah terdaftar!</b>`,
+        `📦 Produk saat ini: <b>${existingProduct.title}</b>`,
+        `🔗 ${existingProduct.affiliate_url}`,
+        '',
+        '💡 <b>Solusi:</b>',
+        `1️⃣ Kirim tanpa nomor agar otomatis mendapat <b>#${nextAvailable}</b>:`,
+        `<code>${parsed.title} - ${parsed.url}</code>`,
+        '',
+        `2️⃣ Atau jika ingin menimpa produk #${finalNumber}, gunakan perintah <code>/edit</code>:`,
+        `<code>/edit ${finalNumber} - ${parsed.title} - ${parsed.url}</code>`,
+      ].join('\n');
+
+      await sendTelegramMessage(chatId, collisionMsg);
+      return { handled: true, authorized: true, response: 'collision_blocked' };
+    }
+
     let imageUrl = '';
-    // If photos are attached, take the highest resolution photo
     if (msg.photo && msg.photo.length > 0) {
       const bestPhoto = msg.photo[msg.photo.length - 1];
       const photoUrl = await getTelegramFileUrl(bestPhoto.file_id);
@@ -255,11 +383,11 @@ Ketik pesan dengan format:
 
     const platform = detectPlatform(parsed.url);
     const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
-    const shortUrl = appUrl ? `${appUrl}/go/${parsed.number}` : `/go/${parsed.number}`;
+    const shortUrl = appUrl ? `${appUrl}/go/${finalNumber}` : `/go/${finalNumber}`;
 
     // 1. Immediately update local SQLite database
     upsertProduct({
-      number: parsed.number,
+      number: finalNumber,
       title: parsed.title,
       affiliate_url: parsed.url,
       image_url: imageUrl,
@@ -269,7 +397,7 @@ Ketik pesan dengan format:
 
     // 2. Append to Google Sheets asynchronously (non-blocking for fast creator feedback)
     appendProductToSheet({
-      number: parsed.number,
+      number: finalNumber,
       title: parsed.title,
       affiliateUrl: parsed.url,
       imageUrl,
@@ -278,9 +406,16 @@ Ketik pesan dengan format:
     });
 
     // 3. Send confirmation to creator
-    const confirmationText = `
-✅ <b>Produk #${parsed.number} berhasil ditambahkan!</b>
+    const headerLine = existingProduct
+      ? `🔄 <b>Nomor #${finalNumber} berhasil diperbarui!</b>\n<i>(Sebelumnya: ${existingProduct.title})</i>`
+      : isAutoAssigned
+        ? `✅ <b>Produk ditambahkan otomatis di Nomor #${finalNumber}!</b>`
+        : `✅ <b>Produk #${finalNumber} berhasil ditambahkan!</b>`;
 
+    const confirmationText = `
+${headerLine}
+
+<b>Nomor Spill:</b> <code>#${finalNumber}</code>
 <b>Judul:</b> ${parsed.title}
 <b>Platform:</b> ${platform.toUpperCase()}
 <b>Link Spill:</b> <code>${shortUrl}</code>
@@ -288,13 +423,11 @@ Ketik pesan dengan format:
     `.trim();
 
     await sendTelegramMessage(chatId, confirmationText);
-    return { handled: true, authorized: true, response: 'product_added' };
+    return { handled: true, authorized: true, response: existingProduct ? 'product_updated' : 'product_added' };
   }
 
-  // If text is not recognized
-  await sendTelegramMessage(
-    chatId,
-    `⚠️ Format pesan tidak dikenali.\n\nGunakan format:\n<code>Nomor - Nama Produk - Link</code>\n\nAtau ketik <code>/help</code> untuk panduan.`
-  );
+  // Comprehensive error reason when message cannot be parsed
+  const detailedError = diagnoseParseError(rawText);
+  await sendTelegramMessage(chatId, detailedError);
   return { handled: true, authorized: true, response: 'unknown_format' };
 }

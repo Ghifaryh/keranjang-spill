@@ -1,5 +1,6 @@
 services:
   keranjangspill:
+    image: ghcr.io/ghifaryh/keranjang-spill:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -21,8 +22,8 @@ services:
       - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID:-}
       - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY:-}
       - SYNC_SECRET=${SYNC_SECRET:-}
-      - CREATOR_NAME=${CREATOR_NAME:-Spill by Intan 🌸}
-      - CREATOR_BIO=${CREATOR_BIO:-Rekomendasi outfit, skincare & printilan lucu! Cari nomor spill di bawah ya ✨}
+      - CREATOR_NAME=${CREATOR_NAME:-Spill by Inten}
+      - CREATOR_BIO=${CREATOR_BIO:-Rekomendasi outfit, skincare & printilan lucu. Ketik nomor spill dari video TikTok/IG kamu di bawah.}
       - CREATOR_AVATAR=${CREATOR_AVATAR:-}
       - CREATOR_TIKTOK=${CREATOR_TIKTOK:-https://tiktok.com}
       - CREATOR_INSTAGRAM=${CREATOR_INSTAGRAM:-https://instagram.com}

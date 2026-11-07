@@ -92,7 +92,15 @@ async function runAllVerifications(): Promise<void> {
     'Parses pipe format `#77 | Celana Kulot Highwaist | Link`'
   );
 
-  process.env.TELEGRAM_ALLOWED_USER_ID = '12345678';
+  const parsedAutoNum = parseProductMessage('Tas Selempang Kulit - https://s.shopee.co.id/tas99');
+  assert(
+    parsedAutoNum !== null && parsedAutoNum.autoNumber === true && parsedAutoNum.title === 'Tas Selempang Kulit',
+    'Parses 2-part auto-number format `Nama Produk - Link`'
+  );
+
+  // Clean #55 before testing fresh creation & collision
+  db.prepare('DELETE FROM products WHERE number = ?').run('55');
+  process.env.TELEGRAM_ALLOWED_USER_ID = '12345678, 87654321';
 
   // 3a. Unauthorized POST to webhook
   const mockContextUnauthorized: unknown = {
@@ -114,7 +122,7 @@ async function runAllVerifications(): Promise<void> {
   const unauthorizedResponse = await postTelegram(mockContextUnauthorized as APIContext);
   assert(unauthorizedResponse.status === 403, 'Webhook rejects unauthorized Telegram user ID with 403 Forbidden');
 
-  // 3b. Authorized POST to webhook
+  // 3b. Authorized POST to webhook (First admin ID)
   const mockContextAuthorized: unknown = {
     request: new Request('https://keranjang.local/api/telegram', {
       method: 'POST',
@@ -138,6 +146,30 @@ async function runAllVerifications(): Promise<void> {
   assert(
     savedFromTg !== null && savedFromTg.title === 'Sandal Lucu Korea' && savedFromTg.platform === 'shopee',
     'Product #55 from Telegram properly stored in SQLite'
+  );
+
+  // 3c. Collision check (Second admin ID tries to use #55 without /edit -> blocked!)
+  const mockContextCollision: unknown = {
+    request: new Request('https://keranjang.local/api/telegram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        update_id: 3,
+        message: {
+          message_id: 3,
+          from: { id: 87654321, is_bot: false, first_name: 'Wifey' },
+          chat: { id: 87654321, type: 'private' },
+          date: Date.now(),
+          text: '55 - Produk Tabrakan - https://s.shopee.co.id/other55',
+        },
+      }),
+    }),
+  };
+  const collisionRes = await postTelegram(mockContextCollision as APIContext);
+  const collisionJson = (await collisionRes.json()) as { response?: string };
+  assert(
+    collisionJson.response === 'collision_blocked' && getProductByNumber('55')?.title === 'Sandal Lucu Korea',
+    'Blocks accidental number collision (#55) and supports 2nd Telegram admin ID'
   );
 
   // -----------------------------------------------------------------

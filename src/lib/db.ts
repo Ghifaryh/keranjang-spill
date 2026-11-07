@@ -107,6 +107,15 @@ export function getProductByNumberAnyStatus(number: string): Product | null {
   return (row as Product) || null;
 }
 
+export function getNextProductNumber(): string {
+  const db = getDb();
+  const row = db
+    .prepare(`SELECT MAX(CAST(number AS INTEGER)) as max_num FROM products WHERE number GLOB '[0-9]*'`)
+    .get() as { max_num: number | null } | undefined;
+  const currentMax = row && typeof row.max_num === 'number' && !Number.isNaN(row.max_num) ? row.max_num : 0;
+  return String(currentMax + 1);
+}
+
 export function upsertProduct(product: {
   number: string;
   title: string;
