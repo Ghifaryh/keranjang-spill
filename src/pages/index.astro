@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { getAllActiveProducts, upsertProductsBatch, type Product } from '../lib/db';
+import { platformLabel } from '../lib/platform';
 
 export const prerender = false;
 
@@ -43,9 +44,9 @@ if (products.length === 0) {
     {
       number: '27',
       title: 'Vintage Leather Sling Bag Mini Korean Look',
-      affiliate_url: 'https://tokopedia.link/demo27',
+      affiliate_url: 'https://s.shopee.co.id/demo27',
       image_url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=160&auto=format&fit=crop&q=80',
-      platform: 'tokopedia',
+      platform: 'shopee',
       active: 1,
     },
   ];
@@ -53,73 +54,108 @@ if (products.length === 0) {
   products = getAllActiveProducts();
 }
 
-const creatorName = process.env.CREATOR_NAME || 'Spill by Inten 🌸';
-const creatorBio = process.env.CREATOR_BIO || 'Rekomendasi outfit, skincare & printilan lucu! Cari nomor spill dari video TikTok/IG kamu di bawah ya ✨';
+const creatorName = process.env.CREATOR_NAME || 'Spill by Inten';
+const creatorBio = process.env.CREATOR_BIO || 'Rekomendasi outfit, skincare & printilan lucu. Ketik nomor spill dari video TikTok/IG kamu di bawah.';
 const creatorAvatar = process.env.CREATOR_AVATAR || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
 const tiktokUrl = process.env.CREATOR_TIKTOK || 'https://tiktok.com';
 const igUrl = process.env.CREATOR_INSTAGRAM || 'https://instagram.com';
 
 const notFoundQuery = Astro.url.searchParams.get('not_found');
+
+const hasShopee = products.some((p) => p.platform === 'shopee');
+const hasTiktok = products.some((p) => p.platform === 'tiktok');
+const showPlatformFilters = hasShopee && hasTiktok;
 ---
 
 <!doctype html>
-<html lang="id" class="h-full bg-pink-50/50">
+<html lang="id" class="bg-paper">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Katalog nomor spill produk rekomendasi TikTok & Instagram" />
-    <meta name="theme-color" content="#f43f5e" />
-    <title>{creatorName} | Keranjang Spill</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>" />
+    <meta name="theme-color" content="#FAF6F2" />
+    <title>{creatorName} — Keranjang Spill</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23B4475F'/><text x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-size='18' font-weight='600' fill='white'>S</text></svg>" />
   </head>
-  <body class="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50/40 to-white text-zinc-800 antialiased selection:bg-pink-200">
+  <body class="min-h-screen text-ink antialiased selection:bg-rose-soft selection:text-rose-deep">
+    <!-- Decorative Top Accent Bar -->
+    <div class="h-1 w-full bg-gradient-to-r from-rose/40 via-rose to-rose/40" aria-hidden="true"></div>
+
     <!-- Main Mobile Container -->
-    <main class="max-w-md mx-auto px-4 py-4 min-h-screen flex flex-col pb-12">
-      
+    <main class="max-w-md mx-auto px-4 pt-6 pb-14 min-h-screen flex flex-col">
       {notFoundQuery && (
-        <div id="not-found-toast" class="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between text-xs text-rose-700 shadow-sm transition-all duration-300">
-          <div class="flex items-center gap-2">
-            <span class="text-base">⚠️</span>
-            <span>Nomor spill yang kamu tuju tidak ditemukan atau sudah tidak aktif.</span>
-          </div>
-          <button id="close-toast" class="text-rose-400 hover:text-rose-700 p-1" aria-label="Tutup pesan">✕</button>
-        </div>
+        <aside
+          id="not-found-toast"
+          role="status"
+          class="mb-5 flex items-center gap-3 rounded-card border border-rose/25 bg-rose-soft/90 pl-4 pr-2 py-2 text-sm text-ink shadow-xs"
+        >
+          <span class="w-6 h-6 rounded-full bg-rose/15 text-rose-deep inline-flex items-center justify-center shrink-0 font-display font-semibold text-xs">
+            !
+          </span>
+          <p class="py-1 flex-1 text-[13px] leading-snug text-ink-soft">
+            Nomor spill yang kamu tuju belum tersedia atau sudah tidak aktif. Coba cari di bawah ya.
+          </p>
+          <button
+            id="close-toast"
+            type="button"
+            class="w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-control text-rose-deep hover:bg-surface/80 transition-colors"
+            aria-label="Tutup pesan"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </aside>
       )}
 
-      <!-- Creator Header Card -->
-      <section class="text-center pt-2 pb-4">
-        <div class="relative inline-block mb-3">
+      <!-- Editorial Creator Header -->
+      <header class="relative text-center pb-5">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-soft/80 border border-rose/15 text-[11px] font-medium tracking-wide uppercase text-rose-deep mb-3.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose animate-pulse" aria-hidden="true"></span>
+          Katalog Spill Resmi
+        </div>
+
+        <div class="relative w-22 h-22 mx-auto">
+          <div class="absolute -inset-1 rounded-full bg-gradient-to-tr from-rose/25 via-rose-soft to-transparent blur-xs" aria-hidden="true"></div>
           <img
             src={creatorAvatar}
             alt={creatorName}
-            class="w-20 h-20 rounded-full object-cover ring-4 ring-pink-300/80 shadow-md shadow-pink-100 mx-auto"
+            width="88"
+            height="88"
             loading="eager"
+            class="relative w-22 h-22 rounded-full object-cover mx-auto border border-line-strong p-1 bg-surface shadow-sm"
           />
-          <div class="absolute bottom-0 right-1 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center text-white text-xs border-2 border-white shadow-sm" title="Verified Creator">
-            ✓
-          </div>
+          <span
+            class="absolute bottom-0.5 right-0.5 w-6 h-6 rounded-full bg-rose text-white ring-2 ring-surface inline-flex items-center justify-center shadow-xs"
+            title="Creator Terverifikasi"
+            aria-hidden="true"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          </span>
         </div>
 
-        <h1 class="text-xl font-extrabold text-zinc-900 tracking-tight flex items-center justify-center gap-1.5">
+        <h1 class="mt-3.5 font-display font-semibold text-[28px] leading-tight tracking-tight text-ink">
           {creatorName}
         </h1>
-        <p class="text-xs text-zinc-600 mt-1.5 max-w-xs mx-auto leading-relaxed">
+        <p class="mt-1.5 text-[13.5px] leading-relaxed text-muted max-w-[21rem] mx-auto">
           {creatorBio}
         </p>
 
-        <!-- Social Badges -->
-        <div class="flex justify-center items-center gap-2 mt-3">
+        <!-- Social Links -->
+        <div class="mt-4 flex justify-center gap-2.5">
           {tiktokUrl && (
             <a
               href={tiktokUrl}
               target="_blank"
               rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-pink-200 text-zinc-700 shadow-xs hover:border-pink-400 transition-colors"
+              class="inline-flex items-center gap-2 h-9 px-3.5 rounded-full border border-line bg-surface text-xs font-medium text-ink-soft hover:text-ink hover:border-rose/50 hover:shadow-xs active:scale-[0.98] transition-all"
             >
-              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.46 6.27 6.27 0 0 0 1.87-4.47V8.62a8.27 8.27 0 0 0 4.9 1.58V6.75a4.84 4.84 0 0 1-1-.06Z"/>
               </svg>
-              TikTok
+              <span>TikTok</span>
             </a>
           )}
           {igUrl && (
@@ -127,157 +163,209 @@ const notFoundQuery = Astro.url.searchParams.get('not_found');
               href={igUrl}
               target="_blank"
               rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-pink-200 text-zinc-700 shadow-xs hover:border-pink-400 transition-colors"
+              class="inline-flex items-center gap-2 h-9 px-3.5 rounded-full border border-line bg-surface text-xs font-medium text-ink-soft hover:text-ink hover:border-rose/50 hover:shadow-xs active:scale-[0.98] transition-all"
             >
-              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
               </svg>
-              Instagram
+              <span>Instagram</span>
             </a>
           )}
         </div>
-      </section>
+      </header>
 
-      <!-- Sticky Search Bar -->
-      <section class="sticky top-2 z-30 mb-3">
-        <div class="backdrop-blur-md bg-white/90 border border-pink-200/90 shadow-md shadow-pink-100/50 rounded-2xl p-2 transition-all">
-          <div class="relative flex items-center">
-            <!-- Search Icon / Mode Pill -->
-            <button
-              id="mode-toggle-btn"
-              type="button"
-              class="px-2.5 py-1.5 mr-2 rounded-xl bg-pink-100 hover:bg-pink-200 text-pink-700 text-xs font-bold transition-all flex items-center gap-1 select-none flex-shrink-0"
-              title="Klik untuk beralih mode Angka / Teks"
-              aria-label="Ubah mode pencarian"
-            >
-              <span id="mode-label">123</span>
-              <span class="text-[9px] opacity-75">▼</span>
-            </button>
+      <!-- Sticky Search & Filter Band -->
+      <section
+        id="sticky-search-band"
+        class="sticky top-0 z-30 -mx-4 px-4 pt-2.5 pb-3 bg-paper/88 backdrop-blur-md border-b border-transparent transition-colors"
+      >
+        <div class="relative group">
+          <svg
+            class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted group-focus-within:text-rose transition-colors pointer-events-none"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
 
-            <!-- Search Input -->
-            <input
-              id="search-input"
-              type="text"
-              inputmode="numeric"
-              placeholder="Ketik nomor spill (contoh: 45)..."
-              autocomplete="off"
-              autofocus
-              class="w-full bg-transparent text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
-            />
+          <input
+            id="search-input"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autofocus
+            aria-label="Cari nomor spill atau nama produk"
+            placeholder="Ketik nomor (mis. 45) atau nama barang..."
+            class="w-full h-13.5 pl-11.5 pr-24 rounded-card border border-line-strong bg-surface text-[15px] font-medium text-ink placeholder:text-muted/80 shadow-[var(--shadow-search)] focus:outline-none focus:border-rose focus:ring-3 focus:ring-rose/15 transition-all"
+          />
 
-            <!-- Clear Button -->
+          <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <button
               id="clear-search-btn"
               type="button"
-              class="hidden text-zinc-400 hover:text-zinc-600 px-2 py-1 text-base font-bold transition-colors select-none"
               aria-label="Bersihkan pencarian"
+              class="hidden w-8 h-8 items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-paper-warm transition-colors"
             >
-              ✕
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+
+            <button
+              id="mode-toggle-btn"
+              type="button"
+              title="Ganti mode keyboard (Angka / Huruf)"
+              aria-label="Ganti mode keyboard"
+              class="h-8 px-2.5 inline-flex items-center justify-center rounded-lg border border-line bg-paper text-[11px] font-semibold tracking-wider text-ink-soft hover:border-rose/40 hover:text-rose-deep active:scale-95 transition-all"
+            >
+              <span id="mode-label">123</span>
             </button>
           </div>
         </div>
 
-        <!-- Result count bar -->
-        <div class="flex items-center justify-between px-2 pt-1.5 text-[11px] text-zinc-500 font-medium">
-          <span id="result-count-label">Menampilkan {products.length} produk</span>
-          <span class="text-pink-600 font-semibold">Cari &amp; Buka Langsung</span>
+        <!-- Platform Filter Pills & Count Bar -->
+        <div class="mt-2.5 flex items-center justify-between gap-2">
+          {showPlatformFilters ? (
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar" role="group" aria-label="Filter toko">
+              <button
+                type="button"
+                data-platform-filter="all"
+                class="platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-ink text-white shadow-2xs"
+              >
+                Semua
+              </button>
+              <button
+                type="button"
+                data-platform-filter="shopee"
+                class="platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-surface border border-line text-ink-soft hover:border-rose/40"
+              >
+                Shopee
+              </button>
+              <button
+                type="button"
+                data-platform-filter="tiktok"
+                class="platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-surface border border-line text-ink-soft hover:border-rose/40"
+              >
+                TikTok Shop
+              </button>
+            </div>
+          ) : (
+            <span class="text-xs font-medium text-muted">Daftar Produk</span>
+          )}
+
+          <p id="result-count-label" class="text-xs font-medium text-muted shrink-0 tabular-nums" aria-live="polite">
+            {products.length} produk
+          </p>
         </div>
       </section>
 
       <!-- Product List -->
-      <section id="product-container" class="space-y-2.5 flex-1">
-        {products.map((item) => {
-          const platformLabel = item.platform === 'shopee'
-            ? 'Shopee'
-            : item.platform === 'tiktok'
-              ? 'TikTok Shop'
-              : item.platform === 'tokopedia'
-                ? 'Tokopedia'
-                : 'Toko';
-
-          const platformBg = item.platform === 'shopee'
-            ? 'bg-orange-50 text-orange-600 border-orange-200'
-            : item.platform === 'tiktok'
-              ? 'bg-zinc-100 text-zinc-800 border-zinc-200'
-              : item.platform === 'tokopedia'
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                : 'bg-pink-50 text-pink-600 border-pink-200';
+      <section id="product-container" class="mt-1 flex-1 space-y-2.5">
+        {products.map((item, idx) => {
+          const isShopee = item.platform === 'shopee';
+          const isTiktok = item.platform === 'tiktok';
+          const badgeClass = isShopee
+            ? 'bg-shopee-soft text-shopee border-shopee/15'
+            : isTiktok
+              ? 'bg-tiktok-soft text-tiktok border-tiktok/15'
+              : 'bg-paper-warm text-muted border-line';
 
           return (
-            <article
-              class="product-card bg-white/95 border border-pink-100 rounded-2xl p-3 shadow-xs hover:shadow-md hover:border-pink-300 transition-all flex gap-3 items-center group"
+            <a
+              href={`/go/${item.number}`}
+              style={`animation-delay: ${Math.min(idx * 35, 250)}ms`}
+              class="product-card animate-card-in group flex items-center gap-3 p-2.5 rounded-card border border-line bg-surface shadow-[var(--shadow-card)] hover:border-rose/50 hover:shadow-[var(--shadow-card-hover)] active:scale-[0.99] transition-all duration-200"
               data-number={item.number.toLowerCase()}
               data-title={item.title.toLowerCase()}
+              data-platform={item.platform || 'other'}
             >
-              <!-- Big Number Badge -->
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 text-white font-black text-lg flex items-center justify-center shadow-sm shadow-pink-200 flex-shrink-0 group-hover:scale-105 transition-transform">
-                #{item.number}
-              </div>
+              <!-- Number Ticket Pill -->
+              <span class="w-13 h-16 shrink-0 rounded-control bg-rose-soft/75 border border-rose/15 flex flex-col items-center justify-center group-hover:bg-rose group-hover:border-rose transition-colors duration-200">
+                <span class="text-[10px] font-semibold uppercase tracking-wider leading-none text-rose-deep/80 group-hover:text-white/80 transition-colors">
+                  No.
+                </span>
+                <span class="mt-1 font-display font-semibold text-[22px] leading-none text-rose-deep group-hover:text-white tabular-nums transition-colors">
+                  {item.number}
+                </span>
+              </span>
 
               <!-- Product Thumbnail -->
-              <div class="w-14 h-14 rounded-xl bg-pink-50 border border-pink-100 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
-                {item.image_url ? (
+              <span class="relative w-16 h-16 shrink-0 rounded-control overflow-hidden bg-paper-warm ring-1 ring-inset ring-black/5 flex items-center justify-center">
+                <svg class="w-6 h-6 text-rose/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 8h12l-1 12H7L6 8z"/>
+                  <path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+                </svg>
+                {item.image_url && (
                   <img
                     src={item.image_url}
-                    alt={item.title}
-                    class="w-full h-full object-cover"
+                    alt=""
+                    width="64"
+                    height="64"
                     loading="lazy"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onerror="this.remove()"
                   />
-                  <div class="hidden w-full h-full items-center justify-center text-pink-400 text-xl font-bold bg-pink-50">
-                    🛍️
-                  </div>
-                ) : (
-                  <span class="text-xl">🛍️</span>
                 )}
-              </div>
+              </span>
 
-              <!-- Info Column -->
-              <div class="flex-1 min-w-0 pr-1">
-                <span class={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1 ${platformBg}`}>
-                  {platformLabel}
+              <!-- Title & Platform Badge -->
+              <span class="flex-1 min-w-0 py-0.5">
+                <span class={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-semibold tracking-wide leading-tight ${badgeClass}`}>
+                  <span class={`w-1.5 h-1.5 rounded-full ${isShopee ? 'bg-shopee' : isTiktok ? 'bg-tiktok' : 'bg-muted'}`} aria-hidden="true"></span>
+                  {platformLabel(item.platform)}
                 </span>
-                <h2 class="text-xs font-semibold text-zinc-900 leading-snug line-clamp-2">
+                <span class="block mt-1 text-[14.5px] font-medium leading-snug text-ink group-hover:text-rose-deep transition-colors line-clamp-2">
                   {item.title}
-                </h2>
-              </div>
+                </span>
+              </span>
 
               <!-- CTA Button -->
-              <a
-                href={`/go/${item.number}`}
-                class="px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-sm shadow-pink-200 flex items-center gap-1 ml-auto flex-shrink-0 active:scale-95 transition-all text-center"
-              >
+              <span class="shrink-0 h-9.5 px-3.5 inline-flex items-center gap-1 rounded-control bg-rose text-white text-xs font-semibold shadow-2xs group-hover:bg-rose-deep transition-colors">
                 <span>Beli</span>
-                <span class="text-[10px]">➜</span>
-              </a>
-            </article>
+                <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </span>
+            </a>
           );
         })}
       </section>
 
       <!-- Empty State Card -->
-      <section id="empty-state" class="hidden text-center py-10 px-4 my-auto">
-        <div class="w-16 h-16 rounded-2xl bg-pink-100 text-pink-500 text-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-          🔍
+      <section
+        id="empty-state"
+        class="hidden my-6 py-10 px-6 rounded-card border border-dashed border-line-strong bg-surface/60 text-center"
+      >
+        <div class="w-12 h-12 rounded-full bg-rose-soft text-rose mx-auto mb-3 flex items-center justify-center">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
         </div>
-        <h3 class="text-sm font-bold text-zinc-900 mb-1">
-          Nomor Tidak Ditemukan
-        </h3>
-        <p id="empty-query-text" class="text-xs text-zinc-500 max-w-xs mx-auto leading-relaxed">
-          Belum ada produk untuk nomor ini. Coba cek nomor lain ya sis! ✨
+        <p id="empty-title" class="font-display font-semibold text-xl text-ink">Belum ada produk</p>
+        <p id="empty-query-text" class="mt-1.5 text-sm text-muted max-w-xs mx-auto leading-relaxed">
+          Cek lagi nomornya di video, atau lihat semua produk.
         </p>
         <button
           id="reset-search-btn"
           type="button"
-          class="mt-4 px-4 py-1.5 rounded-xl text-xs font-bold bg-pink-500 text-white hover:bg-pink-600 transition-colors shadow-sm shadow-pink-200"
+          class="mt-5 h-10 px-5 rounded-full bg-rose text-white text-xs font-semibold hover:bg-rose-deep active:scale-95 transition-all shadow-xs"
         >
-          Lihat Semua Produk
+          Lihat semua produk
         </button>
       </section>
 
       <!-- Footer Info -->
-      <footer class="mt-8 pt-4 border-t border-pink-100 text-center text-[11px] text-zinc-400">
-        <p>KeranjangSpill • Affiliate Link-in-Bio Cepat &amp; Praktis</p>
+      <footer class="mt-12 pt-6 border-t border-line/70 text-center">
+        <p class="font-display italic text-sm text-ink-soft">{creatorName}</p>
+        <p class="mt-1 text-[11px] text-muted">
+          Ketuk produk untuk membuka langsung di aplikasi toko
+        </p>
       </footer>
     </main>
 
@@ -288,13 +376,19 @@ const notFoundQuery = Astro.url.searchParams.get('not_found');
         const clearBtn = document.getElementById('clear-search-btn');
         const modeBtn = document.getElementById('mode-toggle-btn');
         const modeLabel = document.getElementById('mode-label');
+        const stickyBand = document.getElementById('sticky-search-band');
         const cards = document.querySelectorAll('.product-card');
+        const platformPills = document.querySelectorAll('.platform-pill');
         const emptyState = document.getElementById('empty-state');
+        const emptyTitle = document.getElementById('empty-title');
         const emptyQueryText = document.getElementById('empty-query-text');
         const resetBtn = document.getElementById('reset-search-btn');
         const countLabel = document.getElementById('result-count-label');
         const toast = document.getElementById('not-found-toast');
         const closeToastBtn = document.getElementById('close-toast');
+
+        let activePlatform = 'all';
+        let isNumericMode = false;
 
         if (closeToastBtn && toast) {
           closeToastBtn.addEventListener('click', () => {
@@ -302,46 +396,90 @@ const notFoundQuery = Astro.url.searchParams.get('not_found');
           });
         }
 
-        let isNumericMode = true;
+        // Subtle sticky border when scrolling down
+        window.addEventListener(
+          'scroll',
+          () => {
+            if (!stickyBand) return;
+            if (window.scrollY > 140) {
+              stickyBand.classList.replace('border-transparent', 'border-line');
+            } else {
+              stickyBand.classList.replace('border-line', 'border-transparent');
+            }
+          },
+          { passive: true }
+        );
 
-        // Toggle keyboard mode between Numeric (123) and Text (ABC)
+        // Toggle mobile keyboard inputmode between numeric (123) and text (ABC)
         if (modeBtn && modeLabel && input) {
           modeBtn.addEventListener('click', () => {
             isNumericMode = !isNumericMode;
             if (isNumericMode) {
               input.setAttribute('inputmode', 'numeric');
-              modeLabel.textContent = '123';
+              modeLabel.textContent = 'ABC';
+              modeBtn.classList.add('border-rose', 'text-rose-deep', 'bg-rose-soft/60');
               input.placeholder = 'Ketik nomor spill (contoh: 45)...';
             } else {
               input.setAttribute('inputmode', 'text');
-              modeLabel.textContent = 'ABC';
-              input.placeholder = 'Cari nama produk (contoh: kemeja)...';
+              modeLabel.textContent = '123';
+              modeBtn.classList.remove('border-rose', 'text-rose-deep', 'bg-rose-soft/60');
+              input.placeholder = 'Ketik nomor (mis. 45) atau nama barang...';
             }
             input.focus();
           });
         }
 
-        function filterProducts() {
-          const query = (input.value || '').trim().toLowerCase();
+        // Platform filter pills
+        for (let i = 0; i < platformPills.length; i++) {
+          platformPills[i].addEventListener('click', () => {
+            activePlatform = platformPills[i].getAttribute('data-platform-filter') || 'all';
+            for (let j = 0; j < platformPills.length; j++) {
+              const pill = platformPills[j];
+              const isSelected = pill.getAttribute('data-platform-filter') === activePlatform;
+              if (isSelected) {
+                pill.className =
+                  'platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-ink text-white shadow-2xs';
+              } else {
+                pill.className =
+                  'platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-surface border border-line text-ink-soft hover:border-rose/40';
+              }
+            }
+            filterProducts();
+          });
+        }
 
-          if (query.length > 0) {
+        function filterProducts() {
+          const rawQuery = (input.value || '').trim().toLowerCase();
+          const query = rawQuery.replace(/^#/, '');
+
+          if (rawQuery.length > 0) {
             clearBtn.classList.remove('hidden');
+            clearBtn.classList.add('inline-flex');
           } else {
+            clearBtn.classList.remove('inline-flex');
             clearBtn.classList.add('hidden');
           }
 
           let visibleCount = 0;
 
-          // Pure DOM class toggling (<2ms execution time)
           for (let i = 0; i < cards.length; i++) {
             const card = cards[i];
             const num = card.getAttribute('data-number') || '';
             const title = card.getAttribute('data-title') || '';
+            const platform = card.getAttribute('data-platform') || 'other';
 
-            // Match number prefix/contains or title substring
-            const match = num.startsWith(query) || num.includes(query) || title.includes(query);
+            const platformMatch = activePlatform === 'all' || platform === activePlatform;
+            const queryMatch =
+              query === '' || num.startsWith(query) || num.includes(query) || title.includes(query);
 
-            if (match) {
+            const isExactNum = query !== '' && (num === query || Number(num) === Number(query));
+            if (isExactNum && platformMatch) {
+              card.classList.add('is-exact-match');
+            } else {
+              card.classList.remove('is-exact-match');
+            }
+
+            if (platformMatch && queryMatch) {
               card.classList.remove('hidden');
               visibleCount++;
             } else {
@@ -351,15 +489,61 @@ const notFoundQuery = Astro.url.searchParams.get('not_found');
 
           if (visibleCount === 0) {
             emptyState.classList.remove('hidden');
-            emptyQueryText.textContent = `Nomor #${query} belum ada di spill. Coba cek nomor lain ya sis! ✨`;
-            countLabel.textContent = '0 produk ditemukan';
+            if (/^\d+$/.test(query)) {
+              emptyTitle.textContent = `Nomor #${query} belum ada`;
+              emptyQueryText.textContent = 'Cek lagi nomornya di video, atau lihat semua produk.';
+            } else if (query.length > 0) {
+              emptyTitle.textContent = `Belum ada "${rawQuery}"`;
+              emptyQueryText.textContent = 'Coba kata kunci lain, atau lihat semua produk.';
+            } else {
+              emptyTitle.textContent = 'Belum ada produk di kategori ini';
+              emptyQueryText.textContent = 'Coba pilih semua toko untuk melihat katalog lengkap.';
+            }
+            countLabel.textContent = '0 produk';
           } else {
             emptyState.classList.add('hidden');
-            countLabel.textContent = `Menampilkan ${visibleCount} produk`;
+            countLabel.textContent = `${visibleCount} produk`;
           }
         }
 
         input.addEventListener('input', filterProducts);
+
+        // Press Enter to jump directly if there is an exact number match or a single visible result
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const exactCard = document.querySelector('.product-card.is-exact-match:not(.hidden)');
+            if (exactCard && exactCard.getAttribute('href')) {
+              window.location.href = exactCard.getAttribute('href');
+              return;
+            }
+            const visibleCards = document.querySelectorAll('.product-card:not(.hidden)');
+            if (visibleCards.length === 1 && visibleCards[0].getAttribute('href')) {
+              window.location.href = visibleCards[0].getAttribute('href');
+            }
+          }
+        });
+
+        // Press '/' anywhere on desktop to focus search
+        document.addEventListener('keydown', (e) => {
+          if (e.key === '/' && document.activeElement !== input) {
+            e.preventDefault();
+            input.focus();
+          }
+        });
+
+        function resetAllFilters() {
+          input.value = '';
+          activePlatform = 'all';
+          for (let j = 0; j < platformPills.length; j++) {
+            const pill = platformPills[j];
+            const isAll = pill.getAttribute('data-platform-filter') === 'all';
+            pill.className = isAll
+              ? 'platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-ink text-white shadow-2xs'
+              : 'platform-pill h-7 px-3 rounded-full text-xs font-medium transition-all bg-surface border border-line text-ink-soft hover:border-rose/40';
+          }
+          filterProducts();
+          input.focus();
+        }
 
         clearBtn.addEventListener('click', () => {
           input.value = '';
@@ -368,11 +552,7 @@ const notFoundQuery = Astro.url.searchParams.get('not_found');
         });
 
         if (resetBtn) {
-          resetBtn.addEventListener('click', () => {
-            input.value = '';
-            filterProducts();
-            input.focus();
-          });
+          resetBtn.addEventListener('click', resetAllFilters);
         }
       })();
     </script>

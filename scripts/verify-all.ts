@@ -47,7 +47,7 @@ async function runAllVerifications(): Promise<void> {
   // Test platform detection
   assert(detectPlatform('https://s.shopee.co.id/abc1234') === 'shopee', 'Detects Shopee platform from s.shopee.co.id');
   assert(detectPlatform('https://vt.tiktok.com/ZSj1234') === 'tiktok', 'Detects TikTok platform from vt.tiktok.com');
-  assert(detectPlatform('https://tokopedia.link/xyz') === 'tokopedia', 'Detects Tokopedia platform from tokopedia.link');
+  assert(detectPlatform('https://tokopedia.link/xyz') === 'other', 'Non-Shopee/TikTok links fall back to other');
 
   // -----------------------------------------------------------------
   // 2. Product Management (CRUD & Inactive state)

@@ -284,11 +284,5 @@ export function detectPlatform(url: string): string {
   if (lower.includes('tiktok') || lower.includes('tiktokv') || lower.includes('vt.tiktok')) {
     return 'tiktok';
   }
-  if (lower.includes('tokopedia') || lower.includes('tokopedia.link')) {
-    return 'tokopedia';
-  }
-  if (lower.includes('lazada')) {
-    return 'lazada';
-  }
   return 'other';
 }

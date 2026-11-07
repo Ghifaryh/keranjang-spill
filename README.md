@@ -11,7 +11,7 @@ The creator manages links remotely via a private **Telegram Bot** backed by **Go
 ## ✨ Features
 
 - **⚡ Zero-Latency Instant Search**: Real-time client-side DOM filtering in vanilla JS (<5ms). Supports numeric (`123`) and text (`ABC`) search modes.
-- **📱 Mobile-First Aesthetic**: Optimized for mobile viewports with soft rose-pink gradients, sticky frosted-glass search bar, verified badge, and product thumbnails.
+- **📱 Mobile-First Aesthetic**: Refined boutique design with warm off-white tones, dusty-rose accents, serif typography, sticky solid search band, and product thumbnails.
 - **🤖 Private Telegram Bot CMS**: Add products on the go from your phone by sending:
   `45 - Kemeja Oversize Linen - https://s.shopee.co.id/abc1234`
   Supports photo attachments with caption, `/list`, `/delete <number>`, and `/sync`.

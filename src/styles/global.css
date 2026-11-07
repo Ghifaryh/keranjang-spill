@@ -1,8 +1,72 @@
+@import "@fontsource/fraunces/latin-500.css";
+@import "@fontsource/fraunces/latin-600.css";
+@import "@fontsource/fraunces/latin-600-italic.css";
 @import "tailwindcss";
+
+@theme {
+  --color-paper: #FAF6F2;
+  --color-paper-warm: #F4ECE6;
+  --color-surface: #FFFFFF;
+  --color-ink: #24191C;
+  --color-ink-soft: #4A3A3F;
+  --color-muted: #78666B;
+  --color-line: #E8DCDA;
+  --color-line-strong: #D9C7C4;
+  --color-rose: #B4475F;
+  --color-rose-deep: #93354A;
+  --color-rose-soft: #F7E8EC;
+  --color-rose-glow: #FCEFF2;
+  --color-shopee: #D94E28;
+  --color-shopee-soft: #FFF1EC;
+  --color-tiktok: #1F191B;
+  --color-tiktok-soft: #F1ECEE;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-pill: 9999px;
+  --shadow-card: 0 2px 10px -2px rgba(36, 25, 28, 0.04), 0 1px 3px -1px rgba(36, 25, 28, 0.03);
+  --shadow-card-hover: 0 10px 24px -6px rgba(180, 71, 95, 0.12), 0 4px 10px -2px rgba(36, 25, 28, 0.05);
+  --shadow-search: 0 8px 24px -6px rgba(36, 25, 28, 0.07), 0 2px 6px -1px rgba(36, 25, 28, 0.04);
+}
 
 @layer base {
   html {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
   }
+
+  body {
+    background-color: var(--color-paper);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(180, 71, 95, 0.09), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 90% 10%, rgba(217, 78, 40, 0.04), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-rose);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-in {
+  animation: cardFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.product-card.is-exact-match {
+  border-color: var(--color-rose);
+  background-color: var(--color-rose-glow);
+  box-shadow: 0 0 0 1px var(--color-rose), var(--shadow-card-hover);
 }
