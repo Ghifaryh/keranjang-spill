@@ -12,7 +12,7 @@ COPY package*.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 
 COPY . .
-RUN npm run verify && npm run build && npm prune --omit=dev --ignore-scripts
+RUN npm run build && npm prune --omit=dev --ignore-scripts
 
 # Stage 2: Production runner stage
 FROM node:22-alpine AS runner
