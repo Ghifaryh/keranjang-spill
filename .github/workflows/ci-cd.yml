@@ -41,9 +41,99 @@ jobs:
           docker push "$IMAGE_LOWER:latest"
           docker push "$IMAGE_LOWER:${{ github.sha }}"
 
-      # - name: Trigger Portainer Webhook (Optional)
-      #   if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.PORTAINER_WEBHOOK_URL != '' }}
-      #   env:
-      #     PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
-      #   run: |
-      #     curl -fsSL -X POST "$PORTAINER_WEBHOOK_URL"
+      - name: Trigger Portainer Webhook, Verify Redeploy & Notify
+        if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.PORTAINER_WEBHOOK_URL != '' }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set +e
+          DEPLOY_FAILED=0
+          ERROR_DETAIL=""
+
+          if [ "$JOB_STATUS" != "success" ]; then
+            DEPLOY_FAILED=1
+            STATUS_MSG="❌ <b>Build / Push Failed (Portainer Skipped)</b>"
+            ERROR_DETAIL="Job status before webhook: <code>${JOB_STATUS}</code>"
+          else
+            # Record current container ID/start time before triggering Portainer (if running on same host)
+            OLD_STARTED_AT=$(docker inspect -f '{{.State.StartedAt}}' keranjangspill 2>/dev/null || echo "")
+
+            HTTP_STATUS=$(curl -sSLk -o /tmp/portainer_resp.txt -w "%{http_code}" -X POST "$PORTAINER_WEBHOOK_URL")
+            CURL_EXIT=$?
+            RESP_BODY=$(head -c 300 /tmp/portainer_resp.txt 2>/dev/null | tr '\n' ' ')
+
+            if [ $CURL_EXIT -ne 0 ] || { [ "$HTTP_STATUS" -ne 200 ] && [ "$HTTP_STATUS" -ne 204 ]; }; then
+              DEPLOY_FAILED=1
+              STATUS_MSG="❌ <b>Portainer Webhook Failed</b> (HTTP ${HTTP_STATUS:-000})"
+              ERROR_DETAIL="Portainer error: <code>${RESP_BODY:-Connection failed (curl exit $CURL_EXIT)}</code>"
+            else
+              # Verify container actually redeployed & is running healthy
+              VERIFIED=0
+              for i in 1 2 3 4 5 6; do
+                sleep 3
+                CONTAINER_STATE=$(docker inspect -f '{{.State.Status}}' keranjangspill 2>/dev/null || echo "")
+                NEW_STARTED_AT=$(docker inspect -f '{{.State.StartedAt}}' keranjangspill 2>/dev/null || echo "")
+
+                if [ "$CONTAINER_STATE" = "running" ]; then
+                  if [ -z "$OLD_STARTED_AT" ] || [ "$NEW_STARTED_AT" != "$OLD_STARTED_AT" ]; then
+                    VERIFIED=1
+                    break
+                  fi
+                elif [ -z "$CONTAINER_STATE" ]; then
+                  # If Portainer is on a separate host, verify via live HTTP check
+                  LIVE_HTTP=$(curl -sSLk -o /dev/null -w "%{http_code}" "https://spill.gehu.me" || echo "000")
+                  if [ "$LIVE_HTTP" -eq 200 ]; then
+                    VERIFIED=1
+                    break
+                  fi
+                fi
+              done
+
+              if [ "$VERIFIED" -eq 1 ]; then
+                STATUS_MSG="✅ <b>Deployment Redeployed &amp; Verified Live</b>"
+              else
+                DEPLOY_FAILED=1
+                CONTAINER_STATE=$(docker inspect -f '{{.State.Status}}' keranjangspill 2>/dev/null || echo "unknown")
+                STATUS_MSG="⚠️ <b>Webhook Sent (HTTP $HTTP_STATUS), But Stack Did Not Redeploy Properly</b>"
+                ERROR_DETAIL="Container state: <code>${CONTAINER_STATE}</code>"
+              fi
+            fi
+          fi
+
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            SAFE_MSG=$(printf '%s' "$COMMIT_MSG" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+            SHORT_SHA=$(printf '%.7s' "$COMMIT_SHA")
+
+            MESSAGE="${STATUS_MSG}
+
+          📦 <b>Repo:</b> <code>${{ github.repository }}</code>
+          🔖 <b>Branch:</b> <code>${{ github.ref_name }}</code>
+          👤 <b>Author:</b> ${{ github.actor }}
+          📝 <b>Commit:</b> <a href=\"${COMMIT_URL}\">${SHORT_SHA}</a>
+          💬 <b>Message:</b> ${SAFE_MSG}"
+
+            if [ -n "$ERROR_DETAIL" ]; then
+              MESSAGE="${MESSAGE}
+          🚨 <b>Detail:</b> ${ERROR_DETAIL}"
+            fi
+
+            THREAD_ARGS=()
+            if [ -n "$TELEGRAM_THREAD_ID" ]; then
+              THREAD_ARGS=(-d "message_thread_id=${TELEGRAM_THREAD_ID}")
+            fi
+
+            curl -sSL -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              "${THREAD_ARGS[@]}" \
+              -d "parse_mode=HTML" \
+              --data-urlencode "text=${MESSAGE}" >/dev/null
+          fi
+
+          exit $DEPLOY_FAILED
