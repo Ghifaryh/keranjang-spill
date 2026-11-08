@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
+import { sanitizeHttpUrl, sanitizeImageUrl } from './security';
 
 export interface Product {
   id?: number;
@@ -126,10 +127,14 @@ export function upsertProduct(product: {
   active?: number;
 }): Product {
   const db = getDb();
+  const safeAffiliateUrl = sanitizeHttpUrl(product.affiliate_url);
+  if (!safeAffiliateUrl) {
+    throw new Error(`Invalid or unsafe affiliate URL for product #${product.number}`);
+  }
   const activeVal = product.active !== undefined ? product.active : 1;
-  const platformVal = product.platform || detectPlatform(product.affiliate_url);
-  const originalUrlVal = product.original_url || '';
-  const imageUrlVal = product.image_url || '';
+  const platformVal = product.platform || detectPlatform(safeAffiliateUrl);
+  const originalUrlVal = sanitizeHttpUrl(product.original_url);
+  const imageUrlVal = sanitizeImageUrl(product.image_url);
 
   const stmt = db.prepare(`
     INSERT INTO products (number, title, affiliate_url, original_url, image_url, platform, active, updated_at)
@@ -148,7 +153,7 @@ export function upsertProduct(product: {
   return stmt.get(
     product.number,
     product.title,
-    product.affiliate_url,
+    safeAffiliateUrl,
     originalUrlVal,
     imageUrlVal,
     platformVal,
@@ -182,14 +187,18 @@ export function upsertProductsBatch(products: Array<{
   const runBatch = db.transaction((items) => {
     let count = 0;
     for (const item of items) {
+      const safeAffiliateUrl = sanitizeHttpUrl(item.affiliate_url);
+      if (!safeAffiliateUrl) {
+        continue;
+      }
       const activeVal = item.active !== undefined ? item.active : 1;
-      const platformVal = item.platform || detectPlatform(item.affiliate_url);
-      const originalUrlVal = item.original_url || '';
-      const imageUrlVal = item.image_url || '';
+      const platformVal = item.platform || detectPlatform(safeAffiliateUrl);
+      const originalUrlVal = sanitizeHttpUrl(item.original_url);
+      const imageUrlVal = sanitizeImageUrl(item.image_url);
       insertStmt.run(
         item.number,
         item.title,
-        item.affiliate_url,
+        safeAffiliateUrl,
         originalUrlVal,
         imageUrlVal,
         platformVal,

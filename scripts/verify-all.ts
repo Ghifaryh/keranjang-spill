@@ -5,7 +5,8 @@ import {
   setProductActive,
   detectPlatform,
 } from '../src/lib/db';
-import { parseProductMessage } from '../src/lib/telegram';
+import { parseProductMessage, getTelegramFileUrl } from '../src/lib/telegram';
+import { sanitizeHttpUrl, sanitizeImageUrl } from '../src/lib/security';
 import { syncFromSheets } from '../src/lib/sheets';
 import { GET as getRedirect } from '../src/pages/go/[id]';
 import { POST as postTelegram } from '../src/pages/api/telegram';
@@ -281,6 +282,44 @@ async function runAllVerifications(): Promise<void> {
     syncApiResponse.status === 500,
     'API /api/sync returns structured JSON error when credentials missing'
   );
+
+  // -----------------------------------------------------------------
+  // 6. Security & Credential Leak Prevention Checks
+  // -----------------------------------------------------------------
+  console.log('\n--- 6. Testing Security & Credential Leak Protections ---');
+  process.env.TELEGRAM_BOT_TOKEN = '999999:SECRET_BOT_TOKEN_DO_NOT_LEAK';
+  const safePhotoUrl = await getTelegramFileUrl('AgACAgUAAxkBAAIB');
+  assert(
+    safePhotoUrl === '/api/tg-photo/AgACAgUAAxkBAAIB' &&
+      !safePhotoUrl.includes('SECRET_BOT_TOKEN_DO_NOT_LEAK'),
+    'Telegram photo URL uses internal proxy and never leaks TELEGRAM_BOT_TOKEN'
+  );
+
+  assert(
+    sanitizeHttpUrl('javascript:alert(1)') === '',
+    'Blocks javascript: XSS scheme in affiliate/external URLs'
+  );
+  assert(
+    sanitizeImageUrl('https://api.telegram.org/file/bot123456:ABC/photos/file_1.jpg') === '',
+    'Blocks raw Telegram Bot API file URLs containing bot tokens'
+  );
+  assert(
+    sanitizeImageUrl('/api/tg-photo/AgACAgUAAxkBAAIB') === '/api/tg-photo/AgACAgUAAxkBAAIB',
+    'Allows safe internal /api/tg-photo/ proxy URLs'
+  );
+
+  process.env.SYNC_SECRET = 'test_sync_secret_999';
+  const unauthorizedSyncRes = await allSync({
+    request: new Request('https://keranjang.local/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer wrong_secret' },
+    }),
+  } as unknown as APIContext);
+  assert(
+    unauthorizedSyncRes.status === 401,
+    'API /api/sync rejects invalid Bearer token with 401 Unauthorized'
+  );
+  delete process.env.SYNC_SECRET;
 
   console.log('\n====================================================');
   console.log(`VERIFICATION SUMMARY: ${passed} PASSED, ${failed} FAILED`);

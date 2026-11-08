@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getProductByNumber } from '../../lib/db';
 import { trackClick } from '../../lib/anti-spam';
 import { platformLabel } from '../../lib/platform';
+import { sanitizeHttpUrl, sanitizeImageUrl } from '../../lib/security';
 
 export const prerender = false;
 
@@ -27,13 +28,18 @@ export const GET: APIRoute = async ({ params, request, redirect }) => {
     return redirect('/?not_found=1', 302);
   }
 
+  const targetUrl = sanitizeHttpUrl(product.affiliate_url);
+  if (!targetUrl) {
+    return redirect('/?not_found=1', 302);
+  }
+
   // Track click with anti-spam & deduplication
   trackClick(request, product.number);
 
-  const targetUrl = product.affiliate_url;
+  const safeImageUrl = sanitizeImageUrl(product.image_url);
   const escapedUrl = escapeHtml(targetUrl);
   const escapedTitle = escapeHtml(product.title);
-  const escapedImage = product.image_url ? escapeHtml(product.image_url) : '';
+  const escapedImage = safeImageUrl ? escapeHtml(safeImageUrl) : '';
   const platformName = platformLabel(product.platform);
 
   // HTML body with meta-refresh, JS navigation, and deep-link fallback button

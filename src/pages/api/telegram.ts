@@ -1,19 +1,27 @@
 import type { APIRoute } from 'astro';
 import { processTelegramUpdate, type TelegramUpdate } from '../../lib/telegram';
+import { isConfiguredSecret, timingSafeEqualStr } from '../../lib/security';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
-  // Secret token verification (if configured in setWebhook)
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (webhookSecret) {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isConfiguredSecret(webhookSecret)) {
     const receivedSecret = request.headers.get('x-telegram-bot-api-secret-token');
-    if (receivedSecret !== webhookSecret) {
+    if (!timingSafeEqualStr(receivedSecret, webhookSecret.trim())) {
       return new Response(JSON.stringify({ error: 'Invalid webhook secret' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
       });
     }
+  } else if (isProd) {
+    console.error('SECURITY BLOCK: TELEGRAM_WEBHOOK_SECRET must be configured in production.');
+    return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {

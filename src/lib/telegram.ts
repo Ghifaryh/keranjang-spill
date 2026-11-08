@@ -209,17 +209,46 @@ export async function sendTelegramMessage(
 }
 
 export async function getTelegramFileUrl(fileId: string): Promise<string | null> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token || !fileId) return null;
+  const trimmedId = fileId?.trim() || '';
+  if (!/^[A-Za-z0-9_-]{5,256}$/.test(trimmedId)) {
+    return null;
+  }
+  // Return internal proxy path so TELEGRAM_BOT_TOKEN is never exposed in HTML or Google Sheets
+  return `/api/tg-photo/${encodeURIComponent(trimmedId)}`;
+}
+
+export async function fetchTelegramPhotoResponse(fileId: string): Promise<Response | null> {
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const trimmedId = fileId?.trim() || '';
+  if (!token || !/^[A-Za-z0-9_-]{5,256}$/.test(trimmedId)) {
+    return null;
+  }
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { ok: boolean; result?: { file_path?: string } };
-    if (data.ok && data.result?.file_path) {
-      return `https://api.telegram.org/file/bot${token}/${data.result.file_path}`;
+    const metaRes = await fetch(
+      `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(trimmedId)}`
+    );
+    if (!metaRes.ok) return null;
+    const data = (await metaRes.json()) as { ok: boolean; result?: { file_path?: string } };
+    const filePath = data.result?.file_path;
+    if (!data.ok || !filePath || filePath.includes('..')) {
+      return null;
     }
-    return null;
+
+    const fileRes = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+    if (!fileRes.ok || !fileRes.body) return null;
+
+    const contentType = fileRes.headers.get('content-type') || 'image/jpeg';
+    const safeContentType = contentType.startsWith('image/') ? contentType : 'image/jpeg';
+
+    return new Response(fileRes.body, {
+      status: 200,
+      headers: {
+        'Content-Type': safeContentType,
+        'Cache-Control': 'public, max-age=86400, immutable',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
   } catch {
     return null;
   }
@@ -240,7 +269,7 @@ export async function processTelegramUpdate(update: TelegramUpdate): Promise<Tel
     console.warn(`TELEGRAM_ALLOWED_USER_ID is not configured. Rejecting update from user ${userId}.`);
     await sendTelegramMessage(
       chatId,
-      `⚠️ Bot admin belum dikonfigurasi.\nID Telegram Anda adalah: <code>${userId}</code>\nTambahkan ke <code>TELEGRAM_ALLOWED_USER_ID</code> di file .env.`
+      '⛔ <b>Akses ditolak.</b> Bot ini bersifat privat dan belum mengizinkan akses publik.'
     );
     return { handled: true, authorized: false };
   }
@@ -249,7 +278,7 @@ export async function processTelegramUpdate(update: TelegramUpdate): Promise<Tel
     console.warn(`Unauthorized Telegram access attempt from user ID ${userId} (chat: ${chatId})`);
     await sendTelegramMessage(
       chatId,
-      `⛔ <b>Akses ditolak.</b>\nID Telegram Anda (<code>${userId}</code>) belum terdaftar sebagai admin.\n\n💡 <i>Tips: Tambahkan <code>,${userId}</code> pada <code>TELEGRAM_ALLOWED_USER_ID</code> di pengaturan .env untuk memberi akses.</i>`
+      '⛔ <b>Akses ditolak.</b> Akun Telegram Anda tidak terdaftar sebagai admin.'
     );
     return { handled: true, authorized: false };
   }

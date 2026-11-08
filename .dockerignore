@@ -1,10 +1,40 @@
+# Environment & Secrets
+.env
+.env.*
+*.local
+*.pem
+*.key
+*service-account*.json
+*credentials*.json
+
+# Database & Volatile Data
+data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Dependencies & Build Artifacts
 node_modules
 dist
-data
-.env
-.git
-.gitignore
+.astro
+.cache
 *.log
 npm-debug.log*
-.DS_Store
+yarn-debug.log*
+pnpm-debug.log*
+
+# Git, CI, Scripts & Docs
+.git
+.gitignore
+.github
 scripts
+README.md
+affiliate_link_prd.md
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode
+.idea
