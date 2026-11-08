@@ -42,7 +42,7 @@ jobs:
           docker push "$IMAGE_LOWER:${{ github.sha }}"
 
       - name: Trigger Portainer Webhook, Verify Redeploy & Notify
-        if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.PORTAINER_WEBHOOK_URL != '' }}
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           JOB_STATUS: ${{ job.status }}
           PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
@@ -53,6 +53,10 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
+          if [ -z "$PORTAINER_WEBHOOK_URL" ]; then
+            echo "PORTAINER_WEBHOOK_URL is not set, skipping Portainer webhook."
+            exit 0
+          fi
           set +e
           DEPLOY_FAILED=0
           ERROR_DETAIL=""
