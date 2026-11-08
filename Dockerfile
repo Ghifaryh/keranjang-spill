@@ -1,19 +1,16 @@
-# Stage 1: Build stage
-FROM node:22-alpine AS builder
+# Stage 1: Build stage (node:22-slim uses glibc so better-sqlite3 downloads a prebuilt binary in ~1s instead of compiling C++ from source)
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install native dependencies required by better-sqlite3
-RUN apk add --no-cache python3 make g++
-
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 COPY . .
-RUN npm run build
+RUN npm run verify && npm run build && npm prune --omit=dev
 
 # Stage 2: Production runner stage
-FROM node:22-alpine AS runner
+FROM node:22-slim AS runner
 
 WORKDIR /app
 
@@ -22,16 +19,9 @@ ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV DATABASE_PATH=/app/data/keranjang.db
 
-# better-sqlite3 runtime dependencies
-RUN apk add --no-cache libstdc++
-
-# Install production dependencies only
-COPY package*.json ./
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm ci --omit=dev && \
-    apk del .build-deps
-
-# Copy compiled Astro output from builder
+# Copy already-pruned production node_modules and compiled dist from builder (no second npm ci!)
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # Create persistent storage directory for SQLite
