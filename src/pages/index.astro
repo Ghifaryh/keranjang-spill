@@ -1,13 +1,18 @@
 ---
 import '../styles/global.css';
 import { getAllActiveProducts, upsertProductsBatch, type Product } from '../lib/db';
+import { syncFromSheets } from '../lib/sheets';
 import { platformLabel } from '../lib/platform';
 import { sanitizeImageUrl } from '../lib/security';
 
 export const prerender = false;
 
-// Check if any products exist, if not seed initial demo products for an instant great experience
+// Check if any products exist; if empty on a fresh container, sync from Google Sheets first, else seed demo products
 let products = getAllActiveProducts();
+if (products.length === 0 && process.env.GOOGLE_SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+  await syncFromSheets();
+  products = getAllActiveProducts();
+}
 if (products.length === 0) {
   const seedProducts = [
     {

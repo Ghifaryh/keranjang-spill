@@ -1,21 +1,18 @@
 services:
   keranjangspill:
     image: ghcr.io/ghifaryh/keranjang-spill:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: keranjangspill
     restart: unless-stopped
     ports:
       - "4321:4321"
     volumes:
-      - ./data:/app/data
+      - keranjang_data:/app/data
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=4321
       - DATABASE_PATH=/app/data/keranjang.db
-      - APP_URL=${APP_URL:-http://localhost:4321}
+      - APP_URL=${APP_URL:-https://spill.gehu.me}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_ALLOWED_USER_ID=${TELEGRAM_ALLOWED_USER_ID:-}
       - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
@@ -27,3 +24,17 @@ services:
       - CREATOR_AVATAR=${CREATOR_AVATAR:-}
       - CREATOR_TIKTOK=${CREATOR_TIKTOK:-https://tiktok.com}
       - CREATOR_INSTAGRAM=${CREATOR_INSTAGRAM:-https://instagram.com}
+    # Uncomment below for Portainer with caddy-docker-proxy:
+    # networks:
+    #   - caddy-proxy
+    # labels:
+    #   caddy: spill.gehu.me
+    #   caddy.reverse_proxy: "{{upstreams 4321}}"
+    #   caddy.tls: /etc/caddy/certs/gehu_origin.crt /etc/caddy/certs/gehu_origin.key
+
+volumes:
+  keranjang_data:
+
+# networks:
+#   caddy-proxy:
+#     external: true
