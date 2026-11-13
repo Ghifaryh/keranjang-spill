@@ -56,7 +56,10 @@ async function main() {
 
   // Build message
   const creatorName = process.env.CREATOR_NAME || 'Keranjang Spill';
-  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+  const rawAppUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+  const appUrl = (!rawAppUrl || rawAppUrl.includes('localhost') || rawAppUrl.includes('127.0.0.1'))
+    ? 'https://spill.gehu.me'
+    : rawAppUrl;
 
   let statusHeader = isUpgrade
     ? `🚀 <b>Bot Diperbarui ke v${CURRENT_VERSION}!</b>`

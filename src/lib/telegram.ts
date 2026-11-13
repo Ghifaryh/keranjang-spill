@@ -501,8 +501,11 @@ Contoh:
     }
 
     const platform = detectPlatform(parsed.url);
-    const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
-    const shortUrl = appUrl ? `${appUrl}/go/${finalNumber}` : `/go/${finalNumber}`;
+    const rawAppUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+    const appUrl = (!rawAppUrl || rawAppUrl.includes('localhost') || rawAppUrl.includes('127.0.0.1'))
+      ? 'https://spill.gehu.me'
+      : rawAppUrl;
+    const shortUrl = `${appUrl}/go/${finalNumber}`;
 
     // 1. Immediately update local SQLite database
     upsertProduct({
