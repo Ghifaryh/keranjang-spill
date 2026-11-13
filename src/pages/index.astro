@@ -60,9 +60,30 @@ if (products.length === 0) {
   products = getAllActiveProducts();
 }
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { checkAndNotifyStartup } from '../lib/startup';
+
+// Non-blocking startup notification check
+checkAndNotifyStartup().catch(() => {});
+
+// Resolve avatar: check persistent data directory first, then fallback to env
+function resolveCreatorAvatar(): string {
+  const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'keranjang.db');
+  const dataDir = path.dirname(dbPath);
+  for (const ext of ['jpg', 'jpeg', 'png', 'webp']) {
+    const avatarPath = path.join(dataDir, `avatar.${ext}`);
+    if (fs.existsSync(avatarPath)) {
+      const mtime = fs.statSync(avatarPath).mtimeMs;
+      return `/api/avatar?t=${mtime}`;
+    }
+  }
+  return process.env.CREATOR_AVATAR || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
+}
+
 const creatorName = process.env.CREATOR_NAME || 'Spill by Inten';
 const creatorBio = process.env.CREATOR_BIO || 'Rekomendasi outfit, skincare & printilan lucu. Ketik nomor spill dari video TikTok/IG kamu di bawah.';
-const creatorAvatar = process.env.CREATOR_AVATAR || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
+const creatorAvatar = resolveCreatorAvatar();
 const tiktokUrl = process.env.CREATOR_TIKTOK || 'https://tiktok.com';
 const igUrl = process.env.CREATOR_INSTAGRAM || 'https://instagram.com';
 
@@ -82,6 +103,17 @@ const showPlatformFilters = hasShopee && hasTiktok;
     <meta name="theme-color" content="#FAF6F2" />
     <title>{creatorName} — Keranjang Spill</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23B4475F'/><text x='16' y='22' text-anchor='middle' font-family='Georgia,serif' font-size='18' font-weight='600' fill='white'>S</text></svg>" />
+
+    <!-- OpenGraph & Social Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={`${creatorName} — Keranjang Spill`} />
+    <meta property="og:description" content={creatorBio} />
+    <meta property="og:image" content={creatorAvatar} />
+    <meta property="og:site_name" content="Keranjang Spill" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={`${creatorName} — Keranjang Spill`} />
+    <meta name="twitter:description" content={creatorBio} />
+    <meta name="twitter:image" content={creatorAvatar} />
   </head>
   <body class="min-h-screen text-ink antialiased selection:bg-rose-soft selection:text-rose-deep">
     <!-- Decorative Top Accent Bar -->

@@ -282,15 +282,46 @@ export function pruneExpiredDedup(): number {
   return res.changes;
 }
 
-export function getClickStats(): Array<{ product_number: string; clicks: number }> {
+export function getClickStats(limit: number = 20): Array<{ product_number: string; clicks: number }> {
   const db = getDb();
   const stmt = db.prepare(`
     SELECT product_number, COUNT(*) as clicks
     FROM clicks
     GROUP BY product_number
     ORDER BY clicks DESC
+    LIMIT ?
   `);
-  return stmt.all() as Array<{ product_number: string; clicks: number }>;
+  return stmt.all(limit) as Array<{ product_number: string; clicks: number }>;
+}
+
+export function getClicksSummary(): {
+  totalClicks: number;
+  uniqueVisitors: number;
+  topProducts: Array<{ product_number: string; title: string; clicks: number; platform: string }>;
+} {
+  const db = getDb();
+  const total = db.prepare(`SELECT COUNT(*) as count FROM clicks`).get() as { count: number };
+  const unique = db.prepare(`SELECT COUNT(DISTINCT ip_hash) as count FROM clicks`).get() as { count: number };
+
+  const top = db.prepare(`
+    SELECT c.product_number, p.title, p.platform, COUNT(*) as clicks
+    FROM clicks c
+    LEFT JOIN products p ON c.product_number = p.number
+    GROUP BY c.product_number
+    ORDER BY clicks DESC
+    LIMIT 10
+  `).all() as Array<{ product_number: string; title: string; clicks: number; platform: string }>;
+
+  return {
+    totalClicks: total?.count || 0,
+    uniqueVisitors: unique?.count || 0,
+    topProducts: top.map(t => ({
+      product_number: t.product_number,
+      title: t.title || 'Produk ' + t.product_number,
+      clicks: t.clicks,
+      platform: t.platform || 'other'
+    }))
+  };
 }
 
 export function detectPlatform(url: string): string {

@@ -102,6 +102,7 @@ jobs:
 
               if [ "$VERIFIED" -eq 1 ]; then
                 STATUS_MSG="✅ <b>Deployment Redeployed &amp; Verified Live</b>"
+                curl -sSLk "https://spill.gehu.me/" >/dev/null 2>&1 || true
               else
                 DEPLOY_FAILED=1
                 CONTAINER_STATE=$(docker inspect -f '{{.State.Status}}' keranjangspill 2>/dev/null || echo "unknown")

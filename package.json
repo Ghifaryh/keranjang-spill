@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "start": "node ./dist/server/entry.mjs",
     "verify": "tsx scripts/verify-all.ts",
+    "notify:startup": "tsx scripts/notify-startup.ts",
     "bot:dev": "tsx --env-file=.env scripts/bot-dev.ts",
     "sheets:setup": "tsx --env-file=.env scripts/sheets-setup.ts"
   },

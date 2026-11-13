@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   upsertProduct,
   getAllActiveProducts,
@@ -36,6 +38,7 @@ export interface TelegramMessage {
   text?: string;
   caption?: string;
   photo?: TelegramPhotoSize[];
+  reply_to_message?: TelegramMessage;
 }
 
 export interface TelegramUpdate {
@@ -254,6 +257,38 @@ export async function fetchTelegramPhotoResponse(fileId: string): Promise<Respon
   }
 }
 
+export async function downloadTelegramPhotoBuffer(fileId: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const trimmedId = fileId?.trim() || '';
+  if (!token || !/^[A-Za-z0-9_-]{5,256}$/.test(trimmedId)) {
+    return null;
+  }
+
+  try {
+    const metaRes = await fetch(
+      `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(trimmedId)}`
+    );
+    if (!metaRes.ok) return null;
+    const data = (await metaRes.json()) as { ok: boolean; result?: { file_path?: string } };
+    const filePath = data.result?.file_path;
+    if (!data.ok || !filePath || filePath.includes('..')) {
+      return null;
+    }
+
+    const fileRes = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+    if (!fileRes.ok) return null;
+
+    const arrayBuf = await fileRes.arrayBuffer();
+    const contentType = fileRes.headers.get('content-type') || 'image/jpeg';
+    return {
+      buffer: Buffer.from(arrayBuf),
+      contentType: contentType.startsWith('image/') ? contentType : 'image/jpeg',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function processTelegramUpdate(update: TelegramUpdate): Promise<TelegramProcessResult> {
   const msg = update.message || update.edited_message;
   if (!msg) {
@@ -313,6 +348,7 @@ Contoh:
 • <code>/list</code> : Lihat 10 produk terbaru &amp; nomor berikutnya
 • <code>/edit &lt;no&gt; - &lt;nama&gt; - &lt;link&gt;</code> : Update produk
 • <code>/delete &lt;nomor&gt;</code> : Hapus produk (mis. <code>/delete 45</code>)
+• <code>/setavatar</code> : Ganti foto profil/logo (kirim foto + caption <code>/setavatar</code>)
 • <code>/sync</code> : Refresh cache dari Google Sheets
 • <code>/help</code> : Tampilkan panduan ini
     `.trim();
@@ -372,6 +408,60 @@ Contoh:
       await sendTelegramMessage(chatId, `⚠️ Gagal sinkronisasi: ${syncRes.error || 'Unknown error'}`);
     }
     return { handled: true, authorized: true, response: 'sync_completed' };
+  }
+
+  // Command: /setavatar or /avatar (handles photo with caption or replied photo)
+  if (rawText.startsWith('/setavatar') || rawText.startsWith('/avatar')) {
+    let photoFileId = '';
+    if (msg.photo && msg.photo.length > 0) {
+      photoFileId = msg.photo[msg.photo.length - 1].file_id;
+    } else if (msg.reply_to_message?.photo && msg.reply_to_message.photo.length > 0) {
+      photoFileId = msg.reply_to_message.photo[msg.reply_to_message.photo.length - 1].file_id;
+    }
+
+    if (!photoFileId) {
+      await sendTelegramMessage(
+        chatId,
+        '⚠️ <b>Foto tidak ditemukan!</b>\n\nKirim foto dengan caption <code>/setavatar</code> atau balas (reply) foto yang sudah ada dengan <code>/setavatar</code>.'
+      );
+      return { handled: true, authorized: true, response: 'avatar_missing_photo' };
+    }
+
+    const downloaded = await downloadTelegramPhotoBuffer(photoFileId);
+    if (!downloaded) {
+      await sendTelegramMessage(chatId, '❌ Gagal mengunduh foto dari Telegram. Silakan coba lagi.');
+      return { handled: true, authorized: true, response: 'avatar_download_failed' };
+    }
+
+    try {
+      const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'keranjang.db');
+      const dataDir = path.dirname(dbPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+
+      // Remove existing avatar extensions
+      for (const ext of ['jpg', 'jpeg', 'png', 'webp']) {
+        const oldFile = path.join(dataDir, `avatar.${ext}`);
+        if (fs.existsSync(oldFile)) {
+          fs.unlinkSync(oldFile);
+        }
+      }
+
+      const targetPath = path.join(dataDir, 'avatar.jpg');
+      fs.writeFileSync(targetPath, downloaded.buffer);
+
+      await sendTelegramMessage(
+        chatId,
+        '✨ <b>Foto profil/logo berhasil diubah!</b>\nFoto terbaru langsung aktif di halaman web Anda.'
+      );
+      return { handled: true, authorized: true, response: 'avatar_updated' };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('Error saving avatar:', errorMsg);
+      await sendTelegramMessage(chatId, `❌ Gagal menyimpan foto avatar: ${errorMsg}`);
+      return { handled: true, authorized: true, response: 'avatar_save_failed' };
+    }
   }
 
   // Parse product creation or edit
