@@ -134,11 +134,12 @@ jobs:
               THREAD_ARGS=(-d "message_thread_id=${TELEGRAM_THREAD_ID}")
             fi
 
-            curl -sSL -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            TG_RESP=$(curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               -d "chat_id=${TELEGRAM_CHAT_ID}" \
               "${THREAD_ARGS[@]}" \
               -d "parse_mode=HTML" \
-              --data-urlencode "text=${MESSAGE}" >/dev/null
+              --data-urlencode "text=${MESSAGE}")
+            echo "Telegram response: ${TG_RESP}"
           fi
 
           exit $DEPLOY_FAILED
