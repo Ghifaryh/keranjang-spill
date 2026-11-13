@@ -62,10 +62,6 @@ if (products.length === 0) {
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { checkAndNotifyStartup } from '../lib/startup';
-
-// Non-blocking startup notification check
-checkAndNotifyStartup().catch(() => {});
 
 // Resolve avatar: check persistent data directory first, then fallback to env
 function resolveCreatorAvatar(): string {
