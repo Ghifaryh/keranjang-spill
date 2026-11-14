@@ -211,7 +211,7 @@ const showPlatformFilters = hasShopee && hasTiktok;
       <!-- Sticky Search & Filter Band -->
       <section
         id="sticky-search-band"
-        class="sticky top-0 z-30 -mx-4 px-4 pt-2.5 pb-3 bg-paper/88 backdrop-blur-md border-b border-transparent transition-colors"
+        class="sticky top-0 z-30 -mx-4 px-4 pt-2.5 pb-3 bg-paper/96 border-b border-line shadow-2xs transition-colors"
       >
         <div class="relative group">
           <svg
@@ -429,20 +429,6 @@ const showPlatformFilters = hasShopee && hasTiktok;
             toast.remove();
           });
         }
-
-        // Subtle sticky border when scrolling down
-        window.addEventListener(
-          'scroll',
-          () => {
-            if (!stickyBand) return;
-            if (window.scrollY > 140) {
-              stickyBand.classList.replace('border-transparent', 'border-line');
-            } else {
-              stickyBand.classList.replace('border-line', 'border-transparent');
-            }
-          },
-          { passive: true }
-        );
 
         // Toggle mobile keyboard inputmode between numeric (123) and text (ABC)
         if (modeBtn && modeLabel && input) {

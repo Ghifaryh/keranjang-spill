@@ -41,7 +41,6 @@
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -10%, rgba(180, 71, 95, 0.09), transparent 70%),
       radial-gradient(ellipse 60% 40% at 90% 10%, rgba(217, 78, 40, 0.04), transparent 60%);
-    background-attachment: fixed;
   }
 
   :focus-visible {
@@ -63,6 +62,10 @@
 
 .animate-card-in {
   animation: cardFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.product-card {
+  contain: content;
 }
 
 .product-card.is-exact-match {
